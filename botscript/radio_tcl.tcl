@@ -2,6 +2,9 @@
 # by SharkMachine
 # heavily modified by Super_Flea
 
+# 2/23/2018 - Use http instead of egghttp to make requests to radio website
+package require http
+
 array set userit {};
 
 # Edit the following lines for MySQL connection.
@@ -346,6 +349,7 @@ proc help { nick user handle channel texti } {
 	}
 }
 
+# handle play requests
 proc req { nick user handle channel text } {
   global nickz;
   global textz;
@@ -364,16 +368,26 @@ proc req { nick user handle channel text } {
       if { $text != "" } {
         set nickz $nick;
         set textz $text;
-        set sock [egghttp:geturl "$::request_url?songid=$text&host=$user" connect_callback];
+		set reqUrl "$::request_url?songid=$text&host=$user"		
+		
+		# get token from get request
+		set token [http::geturl $reqUrl]
+		# get response data from token
+		set resp [http::data $token]
+		# strip newlines from response so we can work with the data more easily
+		regsub -all "\n" $resp "" resp
+		# handle the response
+		connect_callback $resp
+		# dispose of the request
+		http::cleanup $token
       }
     }
   }
 }
 
-proc connect_callback {sock} {
+# handle response from http request to radio website
+proc connect_callback {html} {
 
-	set html [egghttp:data $sock]
-	regsub -all "\n" $html "" html
 	regexp {<body><i>(.+?)</i></body>} $html - failure
 	regexp {<body><b>(.+?)</b></body>} $html - success;
 
@@ -401,20 +415,19 @@ proc connect_callback {sock} {
 		set time "$min:$sec";
 		set kappale "\0033 [lindex $biisi 0] - [lindex $biisi 1]\0033\00310 ($time)\00310 \0037([lindex $biisi 3])\0037";
 
-	      if {[info exists failure] == 0} {
+		if {[info exists failure] == 0} {
 			if {[info exists success] == 0} { 
-				putserv "PRIVMSG $::chanz :\0034$::nickz:\0034 \0034Your request failed, because:\0034\00312 No #$%§@ idea\00312\0034 -=-\0034$kappale";
+				putserv "PRIVMSG $::chanz :\0034$::nickz:\0034 \0034Your request failed, because:\0034\00312 Could not reach request server.\00312\0034 -=-\0034$kappale";
 			}
 		}
-	      if {[info exists success] != 0} { 
+		if {[info exists success] != 0} { 
 			putserv "PRIVMSG $::chanz :\0034$::nickz:\0034 \0034Your request was successfully sent to the DJ program\0034\0034 -=-\0034$kappale";
 		}
-	      if {[info exists failure] != 0} { 
+	    if {[info exists failure] != 0} { 
 			putserv "PRIVMSG $::chanz :\0034$::nickz:\0034 \0034Your request failed, because:\0034\00312 $failure\00312\0034 -=-\0034$kappale";
 		}
 	}
 	mysqlclose $h;
-	egghttp:cleanup $sock
 }
 
 proc search { nick user handle channel text } {
