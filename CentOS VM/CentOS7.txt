@@ -1,0 +1,62 @@
+Installed in Virtual box. If you don't see 64-bit hosts, check virtulization settings in BIOS, and hyper-v settings in Windows.
+The VM has custom Network Settings (right-click, settings on VM). Set adapter to "NAT". Under "Advanced", configure "Port Forwarding".
+	e.g. ssh, tcp, 127.0.0.1, 223, 10.0.2.15, 22
+	     name, protocol, host ip, host port, guest ip, guest port
+
+login with: ermcgrat
+
+# enable internet connection
+vi /etc/sysconfig/network-scripts/ifcfg-enp0s3
+reboot
+
+yum update
+yum install httpd
+yum install mariadb-server
+yum install links
+yum install nmap
+yum install vim
+yum install screen
+yum install wget
+yum groupinstall "Development Tools"
+
+systemctl enable httpd.service
+systemctl restart httpd.service
+
+# disable selinux and firewall
+setenforce 0
+vim /etc/selinux/config
+systemctl status firewalld
+systemctl disable firewalld
+systemctl stop firewalld
+
+# install php7
+# The config file was wierd. It didn't want to read it until I put it in this strange directory
+# Also, "config-file-path" is misleading, it's the folder path that contains the php.ini, not the full path to the php.ini itself.
+yum install httpd-devel
+yum install libxml2-devel
+wget http://dk2.php.net/get/php-7.1.1.tar.gz/from/this/mirror
+mv mirror php-7.1.1.tar.gz
+tar xvf php-7.1.1.tar.gz
+cd php-7.1.1
+./configure --with-mysqli --with-apxs2 --with-config-file-path=/opt/php7/lib
+make clean && make && make install
+cp /etc/php.ini /opt/php7/lib/php.ini
+vim /opt/php7/lib/php.ini
+service httpd restart
+
+# configure apache so regular user can work on website
+# the s flag tells it to keep root:apache as the file owner even when ermcgrat is the one creating files. Consistency
+chown -R root:apache /var/www/html/
+usermod -G apache ermcgrat
+chmod g+rw /var/www/html/
+chmod -R g+rw /var/www/html/
+chmod -R g+s /var/www/html/
+vim /etc/httpd/conf/httpd.conf
+service httpd restart
+
+# configure mysql, import db
+systemctl enable mariadb.service
+systemctl start mariadb.service
+mysql_secure_installation
+mysql -u root -p radio < /var/www/html/radio_backup_01242017.sql
+
