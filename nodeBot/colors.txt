@@ -1,0 +1,18 @@
+red: \0034
+green: \0033
+aqua: \00310
+yellow: \0037
+blue: \00312
+pink: \00345
+
+http://forum.egghelp.org/viewtopic.php?p=104917
+
+# Some explanation regarding all of the color codes seen used below
+# a color code is started with \003 and it should then ALWAYS be followed by a 2-digit color code. However, they frequently just use the shorthand of a 1-digit color code. E.g. for light red: \00304Hello!\003
+# This could cause an issue if the text to be displayed then started with a number, as that first digit would be interpreted as part of the color code. 
+# Color code according to mIRC: 0 - White, 1 - Black, 2 - Blue, 3 - Green, 4 - Light Red, 5 - Brown, 6 - Purple, 7 - Orange, 8 - Yellow, 9 - Light Green, 10 - Cyan, 11 - Light Cyan, 12 - Light Blue, 13 - Pink, 14 - Grey, 15 - Light Grey 
+# It seems like you can just keep specifying 2-digit color codes all the way up to 99, and each client treats them differently.
+# It's also important to note colors will persist until cleared. \003 will clear color formatting (foreground and background both).
+# Foreground and background: \003FF,BB  E.g yellow text on red background: \00308,04Hello 
+# An example of not cancelling color formatting: \00300,01Hello \00301to you   
+# The word "Hello" is "White on black", and "to you" is "black on black", as it inherits the black background from the first code. 
