@@ -132,7 +132,7 @@ bind time - "* * * * *" songi
 # This could cause an issue if the text to be displayed then started with a number, as that first digit would be interpreted as part of the color code. 
 # Color code according to mIRC: 0 - White, 1 - Black, 2 - Blue, 3 - Green, 4 - Light Red, 5 - Brown, 6 - Purple, 7 - Orange, 8 - Yellow, 9 - Light Green, 10 - Cyan, 11 - Light Cyan, 12 - Light Blue, 13 - Pink, 14 - Grey, 15 - Light Grey 
 # It seems like you can just keep specifying 2-digit color codes all the way up to 99, and each client treats them differently.
-# It's also important to close your color tags, or the formatting will bleed into the following text. \003 will clear color formatting (foreground and background both).
+# It's also important to note colors will persist until cleared. \003 will clear color formatting (foreground and background both).
 # Foreground and background: \003FF,BB  E.g yellow text on red background: \00308,04Hello 
 # An example of not cancelling color formatting: \00300,01Hello \00301to you   
 # The word "Hello" is "White on black", and "to you" is "black on black", as it inherits the black background from the first code. 
