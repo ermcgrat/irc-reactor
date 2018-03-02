@@ -43,19 +43,19 @@ jerk(j => {
       num: 1
     }, (err, response) => {
       if (err) {
-        message.say('\0034I have failed you.\0034 ' + err);
+        message.say('\00304I have failed you. ' + err);
       } else if (response.error) {
-        message.say('\0034I have failed you.\0034 ' + response.error.errors[0].reason);
+        message.say('\00304I have failed you. ' + response.error.errors[0].reason);
       } else {
         const searchTime = response.searchInformation.formattedSearchTime;
         const totalResults = response.searchInformation.formattedTotalResults;
         const title = response.items[0].title;
         const link = response.items[0].link.replace(' ', '');
         const summary = response.items[0].snippet.replace(/\n/g, '');
-        message.say('\0034Found ' + totalResults + ' results \0034\0037in ' + searchTime + ' seconds.\0037');
-        message.say('\00312Top result: ' + title + '\00312');
-        message.say('\0033Summary: ' + summary + '\0033');
-        message.say('\00310Read more: ' + link + '\00310');
+        message.say('\00304Found ' + totalResults + ' results \0037in ' + searchTime + ' seconds.');
+        message.say('\00312Top result: ' + title);
+        message.say('\00303Summary: ' + summary);
+        message.say('\00310Read more: ' + link);
       }
     });
   });
@@ -103,14 +103,14 @@ jerk(j => {
 
       Promise.all([c1Promise, c2Promise]).then(results => {
         if (parseInt(results[0].totalResults) === parseInt(results[1].totalResults)) {
-          message.say('\0034' + contestant1 + '\0034 and \0033' + contestant2 + '\0033 TIE with \00310' + results[0].formattedTotalResults + '\00310 total results!');
+          message.say('\00304' + contestant1 + ' and \00303' + contestant2 + 'TIE \003with \00310' + results[0].formattedTotalResults + '\003 total results!');
         } else if (parseInt(results[0].totalResults) > parseInt(results[1].totalResults)) {
-          message.say('\0034' + contestant1 + '\0034 \00312BEATS\00312 \0033' + contestant2 + '\0033 with\00310 ' + results[0].formattedTotalResults + '\00310 to\0037 ' + results[1].formattedTotalResults + '\0037 total results!');
+          message.say('\00304' + contestant1 + ' \00312BEATS \00303' + contestant2 + '\003 with\00310 ' + results[0].formattedTotalResults + '\003 to\00307 ' + results[1].formattedTotalResults + '\003 total results!');
         } else {
-          message.say('\0034' + contestant1 + '\0034 \00312LOSES TO\00312 \0033' + contestant2 + '\0033 with\00310 ' + results[0].formattedTotalResults + '\00310 to\0037 ' + results[1].formattedTotalResults + '\0037 total results!');
+          message.say('\00304' + contestant1 + ' \00312LOSES TO \00303' + contestant2 + '\003 with\00310 ' + results[0].formattedTotalResults + '\003 to\00307 ' + results[1].formattedTotalResults + '\003 total results!');
         }
       }).catch(err => {
-        message.say('\0034I have failed you.\0034 ' + err);
+        message.say('\003041I have failed you.\00345 ' + err);
       });
     }
   });
@@ -119,7 +119,7 @@ jerk(j => {
   j.watch_for(/^!imdb (.+)$/, message => {
     imdb.search({ keyword: message.match_data[1], category: 'movie' }, (err, data) => {
       if (err) {
-        message.say('\0034I have failed you.\0034 ' + err);
+        message.say('\00304I have failed you. ' + err);
       } else {
         // we found something. Let's get details for the #1 result
         data = JSON.parse(data);
@@ -129,7 +129,7 @@ jerk(j => {
 
         imdb.getByImdbId(id, (err2, data2) => {
           if (err2) {
-            message.say('\0034I have failed you.\0034 ' + err2);
+            message.say('\00304I have failed you. ' + err2);
           } else {
             // we found details
             data2 = JSON.parse(data2);
@@ -137,10 +137,10 @@ jerk(j => {
             const genres = data2.movie.genre.join(', ');
             const summary = data2.movie.summaryText;
             const actors = data2.movie.actors.splice(0, 3).map(actor => actor.name).join(', ');
-            message.say('[IMDB] \0034Movie: ' + title + '\0034 \00310(' + year + ')\00310 \00312Rating: ' + rating + '\00312');
-            message.say('\0033Summary: ' + summary + '\0033');
-            message.say('\0037Genres: ' + genres + '\0037 \0034Lead Actors: ' + actors + '\0034');
-            message.say('\00310Read more: http://www.imdb.com/title/' + id + '\00310');
+            message.say('\00345[IMDB] \00304Movie: ' + title + ' \00310(' + year + ') \00312Rating: ' + rating);
+            message.say('\00303Summary: ' + summary);
+            message.say('\00307Genres: ' + genres + ' \00304Lead Actors: ' + actors);
+            message.say('\00310Read more: http://www.imdb.com/title/' + id);
           }
         });
       }
@@ -156,7 +156,7 @@ jerk(j => {
   j.watch_for(/^!8ball (.+)$/, message => {
     const rand = Math.floor(Math.random() * 100) + 1;
     if (rand <= 5) {
-      message.say('No, fuck you');
+      message.say('\00304No, fuck you');
     } else if (rand <= 10) {
       message.say('It is decidedly so');
     } else if (rand <= 15) {
