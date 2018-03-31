@@ -1,13 +1,9 @@
-red: \00304
-green: \00303
-aqua: \00310
-yellow/orange: \00307
-blue: \00312
-pink: \00345
-
-note, while this worked in the old tcl script, javascript doesn't allow for "octal literals", which those above get interpreted as.
-So instead we use \x, eg:
 red: \x0304
+green: \x0303
+aqua: \x0310
+yellow/orange: \x0307
+blue: \x0312
+pink: \x0345
 
 \x02	bold
 \x03	colored text
@@ -19,14 +15,14 @@ red: \x0304
 http://forum.egghelp.org/viewtopic.php?p=104917
 
 # Some explanation regarding all of the color codes seen used below
-# a color code is started with \003 and it should then ALWAYS be followed by a 2-digit color code. However, they frequently just use the shorthand of a 1-digit color code. E.g. for light red: \0034Hello!
+# a color code is started with \x03 and it should then ALWAYS be followed by a 2-digit color code. However, they frequently just use the shorthand of a 1-digit color code. E.g. for light red: \x034Hello!
 # This could cause an issue if the text to be displayed then started with a number, as that first digit would be interpreted as part of the color code.
-# So instead of \0034 for red, you should use \00304. These will both produce the same exact color, but the latter eliminates risk of text becoming part of the color code.
+# So instead of \x034 for red, you should use \x0304. These will both produce the same exact color, but the latter eliminates risk of text becoming part of the color code.
 # Color code according to mIRC: 0 - White, 1 - Black, 2 - Blue, 3 - Green, 4 - Light Red, 5 - Brown, 6 - Purple, 7 - Orange, 8 - Yellow, 9 - Light Green, 10 - Cyan, 11 - Light Cyan, 12 - Light Blue, 13 - Pink, 14 - Grey, 15 - Light Grey
 # It seems like you can just keep specifying 2-digit color codes all the way up to 99, and each client treats them differently.
-# It's also important to note colors will persist until cleared. \003 will clear color formatting (foreground and background both).
-# Foreground (FF) and background (BB): \003FF,BB  E.g yellow text on red background: \00308,04Hello
-# An example of not cancelling color formatting: \00300,01Hello \00301to you
+# It's also important to note colors will persist until cleared. \x03 will clear color formatting (foreground and background both).
+# Foreground (FF) and background (BB): \x03FF,BB  E.g yellow text on red background: \x0308,04Hello
+# An example of not cancelling color formatting: \x0300,01Hello \x0301to you
 # The word "Hello" is "White on black", and "to you" is "black on black", as it inherits the black background from the first code.
 
 The colors.png attached shows how the color codes look in irsii and hexchat
