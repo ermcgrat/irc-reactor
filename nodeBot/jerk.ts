@@ -1,9 +1,10 @@
 // Todo
-// Radio tcl import (+ shortcuts)
+// Radio tcl import (+ shortcuts > play/vote/search)
 // periodic dedication check
 // Modularize components
 
 import * as mysql from 'mysql';
+import * as rp from 'request-promise';
 import { Promise } from 'bluebird';
 const jerk = require('jerk');
 const imdb = require('imdb-node-api');
@@ -17,8 +18,8 @@ const ircConfig = {
 
 const mysqlConfig: mysql.ConnectionConfig = {
     host: 'east.irc-reactor.com',
-    user: 'irc-reactor',
-    password: 'DbTcDoQHALqyQ3Cm',
+    user: '',
+    password: '',
     database: 'radio'
 };
 
@@ -29,7 +30,7 @@ const googleSearch = new GoogleSearch({
 
 const enableRadioRequests = true;
 const radioRelay = 'http://radio.irc-reactor.com:8018/listen.pls';
-// how many days back the top5 requests should search
+// how many days back the top5 requests should search. 0 for no limit.
 const requestDays = 30;
 
 jerk(j => {
@@ -37,23 +38,9 @@ jerk(j => {
     j.watch_for('!hello', function (message) {
         message.say('Hello!' + JSON.stringify(message));
 
-        const prom = new Promise<number>((resolve, reject) => {
-            setTimeout(() => {
-                resolve(42);
-            }, 1000);
-        }).then(result => {
-            message.say('I got: ' + result);
+        rp.get('http://httpbin.org/ip').then(val => {
+            message.say(JSON.stringify(JSON.parse(val)));
         });
-
-        const connection = mysql.createConnection(mysqlConfig);
-        connection.connect();
-
-        connection.query('SHOW DATABASES', (error, results, fields) => {
-            message.say(JSON.stringify(results));
-            message.say(JSON.stringify(fields));
-        });
-
-        connection.end();
     });
 
     // colors demo
@@ -310,26 +297,77 @@ jerk(j => {
         return result;
     };
 
+    j.watch_for(/^!best5j$/, message => {
+        const connection = mysql.createConnection(mysqlConfig);
+        connection.connect();
+
+        const sql = `SELECT sl.ID, sl.artist, sl.title, sl.duration, sl.album, sl.id as songId, v.rating, v.cnt
+            From songlist sl
+                left join (select avg(score) as rating, count(ID) as cnt, songId From votez Group By songId) as v On sl.ID = v.songId
+            Order By v.rating desc, v.cnt desc Limit 0,5`;
+        connection.query(sql, (error, results, fields) => {
+            if (error) {
+                handleMysqlError(error, message);
+            } else if (results.length) {
+                message.msg(`\x0304Highest rated songs:`);
+                for (let i = 0; i < results.length; i++) {
+                    message.msg(`\x0304Voted for ${results[i].cnt} time(s): ` + songInfo(results[i]));
+                }
+            }
+        });
+
+        connection.end();
+    });
+
     j.watch_for(/^!commandsj$/, message => {
-        message.say('\x0312Radio script commands: \x0303!listeners !playing !next !prev !search !stats !help !listen !top5 !vote !new !play');
+        message.say('\x0312Radio commands: \x0303!help !play !search !vote !playing !next !prev !listen !listeners !stats !new !top5 !least5 !most5 !best5');
     });
 
     j.watch_for(/^!helpj$/, message => {
         message.msg('\x0303Radio command list:');
-        message.msg('\x0312!listen\x0F - \x0303How to listen to this radio station');
-        message.msg('\x0312!new\x0F - \x0303Lists newly-added songs to this radio station');
-        message.msg('\x0312!listeners\x0F - \x0303How many people are listening to the radio');
-        message.msg('\x0312!playing\x0F - \x0303Displays the current song playing on the radio');
-        message.msg('\x0312!next\x0F - \x0303Displays the two songs playing next on the radio');
-        message.msg('\x0312!prev\x0F - \x0303Displays the two songs played previously');
-        message.msg('\x0312!stats\x0F - \x0303Show the listener peak');
-        message.msg('\x0312!top5\x0F - \x0303Show the 5 most recently-requested songs');
         if (enableRadioRequests) {
             message.msg('\x0312!play \x0307<song id>\x0F - \x0303Request a song to be played. Song ID is shown in \x0304!search, !new, !next, and !prev');
             message.msg('\x0312!search \x0307<query>\x0F - \x0303Searches songs by \x0304Song ID, Artist, Song Title, Album Name');
             message.msg('\x0303 -> Example \x0312!search symphony \x0303will output every song with artist, album, or song title containing \x0304symphony');
         }
         message.msg('\x0312!vote \x0307<1 - 5> \x0F- \x0303Vote for the current song on a scale of 1 to 5');
+        message.msg('\x0312!playing\x0F - \x0303Displays the current song playing on the radio');
+        message.msg('\x0312!next\x0F - \x0303Displays the two songs playing next on the radio');
+        message.msg('\x0312!prev\x0F - \x0303Displays the two songs played previously');
+        message.msg('\x0312!listen\x0F - \x0303How to listen to this radio station');
+        message.msg('\x0312!listeners\x0F - \x0303How many people are listening to the radio');
+        message.msg('\x0312!stats\x0F - \x0303Show the listener peak');
+        message.msg('\x0312!new\x0F - \x0303Lists newly-added songs to this radio station');
+        message.msg('\x0312!top5\x0F - \x0303Show the 5 most recently-requested songs ' + (requestDays ? ' in the last ' + requestDays + ' days' : ''));
+        message.msg('\x0312!least5\x0F - \x0303Show the 5 least-played songs of all time');
+        message.msg('\x0312!most5\x0F - \x0303Show the 5 most-played songs of all time');
+        message.msg('\x0312!best5\x0F - \x0303Show the 5 highest-rated songs of all time');
+    });
+
+    j.watch_for(/^!least5j$/, message => {
+        const connection = mysql.createConnection(mysqlConfig);
+        connection.connect();
+
+        const sql = `SELECT sl.ID, sl.artist, sl.title, sl.duration, sl.album, sl.id as songId, v.rating, count_played
+            From songlist sl
+                left join (select avg(score) as rating, songId From votez Group By songId) as v On sl.ID = v.songId
+            Order By count_played, date_played Limit 0,5`;
+        connection.query(sql, (error, results, fields) => {
+            if (error) {
+                handleMysqlError(error, message);
+            } else if (results.length) {
+                message.msg(`\x0304Least played songs:`);
+                for (let i = 0; i < results.length; i++) {
+                    message.msg(`\x0304Played ${results[i].count_played} time(s): ` + songInfo(results[i]));
+                }
+            }
+        });
+
+        connection.end();
+    });
+
+    j.watch_for(/^!listenj$/, message => {
+        message.say(`\x0312${radioRelay}`);
     });
 
     j.watch_for(/^!listenersj$/, message => {
@@ -348,25 +386,44 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!playingj$/, message => {
+    j.watch_for(/^!most5j$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
-        const sql = `select sl.artist, sl.title, sl.duration, sl.album, v.rating, sl.ID as songId
-            from songlist sl
-                inner join historylist hl ON hl.songId = sl.ID
-                left Join (
-                    select avg(score) as rating, songId
-                    From votez
-                    Group By songId
-                ) as v on hl.songId = v.songId
-            Where sl.songtype = 'S'
-            ORDER BY hl.date_played DESC LIMIT 0, 1`;
+        const sql = `SELECT sl.ID, sl.artist, sl.title, sl.duration, sl.album, sl.id as songId, v.rating, count_played
+            From songlist sl
+                left join (select avg(score) as rating, songId From votez Group By songId) as v On sl.ID = v.songId
+            Order By count_played desc, date_played desc Limit 0,5`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
                 handleMysqlError(error, message);
-            } else {
-                message.say('\x0304Currently playing: ' + songInfo(results[0]));
+            } else if (results.length) {
+                message.msg(`\x0304Most played songs:`);
+                for (let i = 0; i < results.length; i++) {
+                    message.msg(`\x0304Played ${results[i].count_played} time(s): ` + songInfo(results[i]));
+                }
+            }
+        });
+
+        connection.end();
+    });
+
+    j.watch_for(/^!newj$/, message => {
+        const connection = mysql.createConnection(mysqlConfig);
+        connection.connect();
+
+        const sql = `SELECT sl.ID, sl.artist, sl.title, sl.duration, sl.album, sl.id as songId, v.rating
+            From songlist sl
+                left join (select avg(score) as rating, songId From votez Group By songId) as v On sl.ID = v.songId
+            Order By date_added desc Limit 0,5`;
+        connection.query(sql, (error, results, fields) => {
+            if (error) {
+                handleMysqlError(error, message);
+            } else if (results.length) {
+                message.msg(`\x0304Most recently-added songs:`);
+                for (let i = 0; i < results.length; i++) {
+                    message.msg(songInfo(results[i]));
+                }
             }
         });
 
@@ -377,23 +434,42 @@ jerk(j => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
-        const sql = `SELECT songlist.ID, songlist.artist, songlist.title, songlist.duration, songlist.album, songlist.id as songId
+        const sql = `SELECT songlist.ID, songlist.artist, songlist.title, songlist.duration, songlist.album, songlist.id as songId, v.rating
             FROM queuelist, songlist
+                left join (select avg(score) as rating, songId From votez Group By songId) as v On songlist.ID = v.songId
             WHERE (queuelist.songID = songlist.ID)  AND (songlist.songtype='S') AND (songlist.artist <> '')
             ORDER BY queuelist.sortID ASC LIMIT 0, 2`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
                 handleMysqlError(error, message);
+            } else if (!results.length) {
+                message.say('\x0304No upcoming requests at the moment.');
             } else {
-                if (!results.length) {
-                    message.say('\x0304No upcoming requests at the moment.');
-                } else {
-                    message.say('\x0304Coming next:');
-                    for (let i = 0; i < results.length; i++) {
-                        message.say(songInfo(results[i]));
-                    }
+                message.say('\x0304Coming next:');
+                for (let i = 0; i < results.length; i++) {
+                    message.say(songInfo(results[i]));
                 }
+            }
+        });
 
+        connection.end();
+    });
+
+    j.watch_for(/^!playingj$/, message => {
+        const connection = mysql.createConnection(mysqlConfig);
+        connection.connect();
+
+        const sql = `select sl.artist, sl.title, sl.duration, sl.album, sl.ID as songId, v.rating
+            from songlist sl
+                inner join historylist hl ON hl.songId = sl.ID
+                left join (select avg(score) as rating, songId From votez Group By songId) as v On sl.ID = v.songId
+            Where sl.songtype = 'S'
+            ORDER BY hl.date_played DESC LIMIT 0, 1`;
+        connection.query(sql, (error, results, fields) => {
+            if (error) {
+                handleMysqlError(error, message);
+            } else if (results.length) {
+                message.say('\x0304Currently playing: ' + songInfo(results[0]));
             }
         });
 
@@ -404,23 +480,21 @@ jerk(j => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
-        const sql = `SELECT songlist.ID, songlist.artist, songlist.title, songlist.duration, songlist.album, songlist.id as songId
+        const sql = `SELECT songlist.ID, songlist.artist, songlist.title, songlist.duration, songlist.album, songlist.id as songId, v.rating
             FROM historylist,songlist
+            left join (select avg(score) as rating, songId From votez Group By songId) as v On songlist.ID = v.songId
             WHERE (historylist.songID = songlist.ID) AND (songlist.songtype='S')
             ORDER BY historylist.date_played DESC LIMIT 1, 2`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
                 handleMysqlError(error, message);
+            } else if (!results.length) {
+                message.say('\x0304No songs played previously.');
             } else {
-                if (!results.length) {
-                    message.say('\x0304No songs played previously.');
-                } else {
-                    message.say('\x0304Previously played:');
-                    for (let i = 0; i < results.length; i++) {
-                        message.say(songInfo(results[i]));
-                    }
+                message.say('\x0304Previously played:');
+                for (let i = 0; i < results.length; i++) {
+                    message.say(songInfo(results[i]));
                 }
-
             }
         });
 
@@ -432,21 +506,20 @@ jerk(j => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
-        const sql = `SELECT artist, title, duration, ID as songId, album
-            FROM songlist WHERE (title like '%${search}%') OR (artist like '%${search}%') OR (album like '%${search}%') OR (ID = '${search}')
-            ORDER BY rating DESC LIMIT 0, 10`;
+        const sql = `SELECT artist, title, duration, ID as songId, album, v.rating
+            FROM songlist
+            left join (select avg(score) as rating, songId From votez Group By songId) as v On songlist.ID = v.songId
+            WHERE (title like '%${search}%') OR (artist like '%${search}%') OR (album like '%${search}%') OR (ID = '${search}')
+            ORDER BY v.rating DESC LIMIT 0, 10`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
                 handleMysqlError(error, message);
+            } else if (!results.length) {
+                message.msg(`\x0312Could not find any songs matching: \x0304${message}`);
             } else {
-                if (!results.length) {
-                    message.msg(`\x0312Could not find any songs matching: \x0304${message}`);
-                } else {
-                    for (let i = 0; i < results.length; i++) {
-                        message.msg(songInfo(results[i]));
-                    }
+                for (let i = 0; i < results.length; i++) {
+                    message.msg(songInfo(results[i]));
                 }
-
             }
         });
         connection.end();
@@ -468,23 +541,21 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!listenj$/, message => {
-        message.say(`\x0312${radioRelay}`);
-    });
-
     j.watch_for(/^!top5j$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
-        const sql = `SELECT songlist.artist, songlist.title, songlist.duration, songlist.ID as songId, songlist.album, count(songlist.ID) as cnt
+        const filter = requestDays ? `AND (requestlist.t_stamp BETWEEN NOW() - INTERVAL ${requestDays} DAY AND NOW())` : '';
+        const sql = `SELECT songlist.artist, songlist.title, songlist.duration, songlist.ID as songId, songlist.album, count(songlist.ID) as cnt, v.rating
             FROM requestlist, songlist
-            WHERE (requestlist.songID = songlist.ID) AND (requestlist.code=200)
-                AND (requestlist.t_stamp BETWEEN NOW() - INTERVAL ${requestDays} DAY AND NOW())
+            left join (select avg(score) as rating, songId From votez Group By songId) as v On songlist.ID = v.songId
+            WHERE (requestlist.songID = songlist.ID) AND (requestlist.code=200) ${filter}
             GROUP BY songlist.ID, songlist.artist, songlist.title ORDER BY cnt DESC Limit 0,5`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
                 handleMysqlError(error, message);
-            } else {
+            } else if (results.length) {
+                message.msg(`\x0304Most requested songs${requestDays ? ` in the last ${requestDays} days` : ''}:`);
                 for (let i = 0; i < results.length; i++) {
                     message.msg(`\x0304Requested ${results[i].cnt} time(s): ` + songInfo(results[i]));
                 }
@@ -494,7 +565,7 @@ jerk(j => {
         connection.end();
     });
 
-    // vote, new, play
-    // most5, best5?
+    // vote, play
+    // periodic check/dedication
 
 }).connect(ircConfig);
