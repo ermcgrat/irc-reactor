@@ -1,26 +1,25 @@
 // Todo
-// Radio tcl import (+ shortcuts > play/vote/search)
-// periodic dedication check
 // Modularize components
 
 import * as mysql from 'mysql';
 import * as rp from 'request-promise';
 import { Promise } from 'bluebird';
-const jerk = require('jerk');
-const imdb = require('imdb-node-api');
+const fs = require('fs');
 const GoogleSearch = require('google-search');
+const imdb = require('imdb-node-api');
+const jerk = require('jerk');
 
 const ircConfig = {
-    server: 'east.irc-reactor.com',
+    server: '192.168.1.fu',
     nick: 'Jerk',
-    channels: ['#sov']
+    channels: ['#test']
 };
 
 const mysqlConfig: mysql.ConnectionConfig = {
     host: '',
     user: '',
     password: '',
-    database: 'radio'
+    database: ''
 };
 
 const googleSearch = new GoogleSearch({
@@ -32,16 +31,9 @@ const enableRadioRequests = true;
 const radioRelay = 'http://radio.irc-reactor.com:8018/listen.pls';
 // how many days back the top5 requests should search. 0 for no limit.
 const requestDays = 30;
+const requestUrl = 'http://radio.irc-reactor.com/req-irc.php';
 
-jerk(j => {
-
-    j.watch_for('!hello', function (message) {
-        message.say('Hello!' + JSON.stringify(message));
-
-        rp.get('http://httpbin.org/ip').then(val => {
-            message.say(JSON.stringify(JSON.parse(val)));
-        });
-    });
+const jerkBot = jerk(j => {
 
     // colors demo
     j.watch_for(/^!colors$/, message => {
@@ -243,61 +235,7 @@ jerk(j => {
     });
 
     // Radio
-    const handleMysqlError = (error: any, message: any): void => {
-        message.say('Error: ' + JSON.stringify(error));
-    };
-
-    const msToTime = (duration: number): string => {
-        let hours, minutes, seconds, display = '';
-        seconds = Math.floor(duration / 1000);
-        minutes = Math.floor(seconds / 60);
-        seconds = seconds % 60;
-        hours = Math.floor(minutes / 24);
-        minutes = minutes % 60;
-        hours = hours % 24;
-
-        // always pad seconds
-        seconds = seconds < 10 ? '0' + seconds : seconds;
-
-        // pad minutes if there are hours
-        if (hours > 0 && minutes < 10) {
-            minutes = '0' + minutes;
-        }
-
-        // only display hours if there are any
-        if (hours > 0) {
-            display += hours + ':';
-        }
-
-        display += minutes + ':' + seconds;
-        return display;
-    };
-
-    interface ISongRecord {
-        songId: number;
-        artist: string;
-        title: string;
-        duration: number;
-        album?: string;
-        rating?: number;
-    }
-
-    const songInfo = (song: ISongRecord): string => {
-        let result = '';
-        if (song.songId) {
-            result += `\x0312${song.songId}: `;
-        }
-        result += `\x0303${song.artist} - ${song.title} \x0310(${msToTime(song.duration)})`;
-        if (song.album) {
-            result += `\x0307 (${song.album})`;
-        }
-        if (song.rating) {
-            result += `\x0306 Rating: ${song.rating}`;
-        }
-        return result;
-    };
-
-    j.watch_for(/^!best5j$/, message => {
+    j.watch_for(/^!best5$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -307,7 +245,7 @@ jerk(j => {
             Order By v.rating desc, v.cnt desc Limit 0,5`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (results.length) {
                 message.msg(`\x0304Highest rated songs:`);
                 for (let i = 0; i < results.length; i++) {
@@ -319,11 +257,11 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!commandsj$/, message => {
+    j.watch_for(/^!commands$/, message => {
         message.say('\x0312Radio commands: \x0303!help !play !search !vote !playing !next !prev !listen !listeners !stats !new !top5 !least5 !most5 !best5');
     });
 
-    j.watch_for(/^!helpj$/, message => {
+    j.watch_for(/^!help$/, message => {
         message.msg('\x0303Radio command list:');
         if (enableRadioRequests) {
             message.msg('\x0312!play \x0307<song id>\x0F - \x0303Request a song to be played. Song ID is shown in \x0304!search, !new, !next, and !prev');
@@ -344,7 +282,7 @@ jerk(j => {
         message.msg('\x0312!best5\x0F - \x0303Show the 5 highest-rated songs of all time');
     });
 
-    j.watch_for(/^!least5j$/, message => {
+    j.watch_for(/^!least5$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -354,7 +292,7 @@ jerk(j => {
             Order By count_played, date_played Limit 0,5`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (results.length) {
                 message.msg(`\x0304Least played songs:`);
                 for (let i = 0; i < results.length; i++) {
@@ -366,18 +304,18 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!listenj$/, message => {
+    j.watch_for(/^!listen$/, message => {
         message.say(`\x0312${radioRelay}`);
     });
 
-    j.watch_for(/^!listenersj$/, message => {
+    j.watch_for(/^!listeners$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
         const sql = 'SELECT listeners FROM historylist ORDER BY date_played DESC LIMIT 0, 1';
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else {
                 message.say(`\x0304There are ${results[0].listeners} people currently listening to the radio.`);
             }
@@ -386,7 +324,7 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!most5j$/, message => {
+    j.watch_for(/^!most5$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -396,7 +334,7 @@ jerk(j => {
             Order By count_played desc, date_played desc Limit 0,5`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (results.length) {
                 message.msg(`\x0304Most played songs:`);
                 for (let i = 0; i < results.length; i++) {
@@ -408,7 +346,7 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!newj$/, message => {
+    j.watch_for(/^!new$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -418,7 +356,7 @@ jerk(j => {
             Order By date_added desc Limit 0,5`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (results.length) {
                 message.msg(`\x0304Most recently-added songs:`);
                 for (let i = 0; i < results.length; i++) {
@@ -430,7 +368,7 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!nextj$/, message => {
+    j.watch_for(/^!next$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -441,7 +379,7 @@ jerk(j => {
             ORDER BY queuelist.sortID ASC LIMIT 0, 2`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (!results.length) {
                 message.say('\x0304No upcoming requests at the moment.');
             } else {
@@ -455,7 +393,58 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!playingj$/, message => {
+    const playFunc = (message) => {
+        if (!enableRadioRequests) {
+            return;
+        }
+
+        const songId = parseInt(message.match_data[1], 10);
+        const userNick = message.user.nick;
+        const userHost = message.user.host.replace(/'/g, '\'\'');
+
+        if (!Number.isInteger(songId)) {
+            message.say(`\x0304${userNick}: Give a valid Song ID`);
+            return;
+        }
+
+        rp.get(`${requestUrl}?songid=${songId}&host=${userNick}%40${userHost}`).then(response => {
+            // remove new lines
+            response = response.replace(/\n/g, '');
+
+            const failure = response.match(/<body><i>(.+?)<\/i><\/body>/);
+            const success = response.match(/<body><b>(.+?)<\/b><\/body>/);
+
+            if (failure) {
+                message.say(`\x0304Request failed, because:\x0312 ${failure[1]}`);
+            } else {
+                const connection = mysql.createConnection(mysqlConfig);
+                connection.connect();
+
+                const sql = `SELECT artist, title, duration, ID as songId, album, v.rating
+                    FROM songlist
+                    left join (select avg(score) as rating, songId From votez Group By songId) as v On songlist.ID = v.songId
+                    WHERE songlist.id = ${songId}`;
+                connection.query(sql, (error, results, fields) => {
+                    if (error) {
+                        handleMysqlError(error);
+                    } else if (!results.length) {
+                        message.say(`\x0312Could not find any songs matching: \x0304${songId}`);
+                    } else {
+                        message.say(`\x0304Your request was successfully sent to the DJ program! -=- ${songInfo(results[0])}`);
+                    }
+                });
+                connection.end();
+            }
+        }).catch(err => {
+            message.say(`Request failed, because:`);
+            message.say(JSON.stringify(err));
+        });
+    };
+
+    j.watch_for(/^!p (.+)$/, playFunc);
+    j.watch_for(/^!play (.+)$/, playFunc);
+
+    j.watch_for(/^!playing$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -467,7 +456,7 @@ jerk(j => {
             ORDER BY hl.date_played DESC LIMIT 0, 1`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (results.length) {
                 message.say('\x0304Currently playing: ' + songInfo(results[0]));
             }
@@ -476,7 +465,7 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!prevj$/, message => {
+    j.watch_for(/^!prev$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -487,7 +476,7 @@ jerk(j => {
             ORDER BY historylist.date_played DESC LIMIT 1, 2`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (!results.length) {
                 message.say('\x0304No songs played previously.');
             } else {
@@ -501,7 +490,7 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!searchj (.+)$/, message => {
+    const searchFunc = (message) => {
         const search = message.match_data[1].replace(/'/g, '\'\'');
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
@@ -513,9 +502,9 @@ jerk(j => {
             ORDER BY v.rating DESC LIMIT 0, 10`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (!results.length) {
-                message.msg(`\x0312Could not find any songs matching: \x0304${message}`);
+                message.msg(`\x0312Could not find any songs matching: \x0304${search}`);
             } else {
                 for (let i = 0; i < results.length; i++) {
                     message.msg(songInfo(results[i]));
@@ -523,16 +512,19 @@ jerk(j => {
             }
         });
         connection.end();
-    });
+    };
 
-    j.watch_for(/^!statsj$/, message => {
+    j.watch_for(/^!s (.+)$/, searchFunc);
+    j.watch_for(/^!search (.+)$/, searchFunc);
+
+    j.watch_for(/^!stats$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
         const sql = 'SELECT max(listeners) as maxListeners from historylist LIMIT 0, 1';
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else {
                 message.say(`\x0303The current listeners record is: \x0304 ${results[0].maxListeners} people at a time`);
             }
@@ -541,7 +533,7 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!top5j$/, message => {
+    j.watch_for(/^!top5$/, message => {
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
@@ -553,7 +545,7 @@ jerk(j => {
             GROUP BY songlist.ID, songlist.artist, songlist.title ORDER BY cnt DESC Limit 0,5`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
+                handleMysqlError(error);
             } else if (results.length) {
                 message.msg(`\x0304Most requested songs${requestDays ? ` in the last ${requestDays} days` : ''}:`);
                 for (let i = 0; i < results.length; i++) {
@@ -565,27 +557,158 @@ jerk(j => {
         connection.end();
     });
 
-    j.watch_for(/^!votej [1-5]$/, message => {
-        const rating = message.match_data[1];
+    const voteFunc = (message) => {
+        const rating = parseInt(message.match_data[1], 10);
+        const userHost = message.user.host.replace(/'/g, '\'\'');
+        const userNick = message.user.nick;
+
+        if (!(Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
+            message.say(`\x0304${userNick}: Please vote with a value of 1 - 5.`);
+            return false;
+        }
+
         const connection = mysql.createConnection(mysqlConfig);
         connection.connect();
 
-        const sql = `Select sl.id as songId`;
+        // figure out if the user has already voted for this song
+        const sql = `Select hl.songId, v.score as rating
+            From historylist hl Left Join (
+                Select songId, score
+                From votez
+                Where host = '${userNick}@${userHost}'
+            ) as v On hl.songId = v.songId
+            Order By hl.date_played Desc Limit 0,1`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
-                handleMysqlError(error, message);
-            } else if (results.length) {
-                message.msg(`\x0304Most requested songs${requestDays ? ` in the last ${requestDays} days` : ''}:`);
-                for (let i = 0; i < results.length; i++) {
-                    message.msg(`\x0304Requested ${results[i].cnt} time(s): ` + songInfo(results[i]));
-                }
+                handleMysqlError(error);
+            } else if (!results.length) {
+                message.say(`\x0304No song is currently playing!`);
+            } else if (results[0].rating) {
+                message.say(`\x0304${userNick}: You already voted for this song as \x0310${results[0].rating} stars.`);
+            } else {
+                const songId = results[0].songId;
+                voteInsertFunc(songId, userHost, rating, userNick, message);
             }
         });
 
         connection.end();
-    });
+    };
 
-    // vote, play
-    // periodic check/dedication
+    const voteInsertFunc = (songId: number, userHost: string, rating: number, userNick: string, message: any) => {
+        const connection = mysql.createConnection(mysqlConfig);
+        connection.connect();
+
+        const sql = `Insert Into votez (songID, host, score, t_stamp) Values (${songId}, '${userNick}@${userHost}', ${rating}, now())`;
+        connection.query(sql, (error, results, fields) => {
+            if (error) {
+                handleMysqlError(error);
+            } else {
+                message.say(`\x0304${userNick}: \x0310Your vote was successfully entered into the system!`);
+            }
+        });
+
+        connection.end();
+    };
+
+    j.watch_for(/^!v (.+)$/, voteFunc);
+    j.watch_for(/^!vote (.+)$/, voteFunc);
 
 }).connect(ircConfig);
+
+// Radio helper functions
+const handleMysqlError = (error: any): void => {
+    logError('MySql Error: ' + JSON.stringify(error));
+};
+
+const logError = (err) => {
+    const log_file = fs.createWriteStream(__dirname + '/error.log', { flags: 'a' });
+    const errTime = new Date(Date.now());
+    const errTs = errTime.toLocaleDateString() + ' ' + errTime.toLocaleTimeString();
+    log_file.write(`${errTs} -> ${err} \n`);
+};
+
+const msToTime = (duration: number): string => {
+    let hours, minutes, seconds, display = '';
+    seconds = Math.floor(duration / 1000);
+    minutes = Math.floor(seconds / 60);
+    seconds = seconds % 60;
+    hours = Math.floor(minutes / 24);
+    minutes = minutes % 60;
+    hours = hours % 24;
+
+    // always pad seconds
+    seconds = seconds < 10 ? '0' + seconds : seconds;
+
+    // pad minutes if there are hours
+    if (hours > 0 && minutes < 10) {
+        minutes = '0' + minutes;
+    }
+
+    // only display hours if there are any
+    if (hours > 0) {
+        display += hours + ':';
+    }
+
+    display += minutes + ':' + seconds;
+    return display;
+};
+
+interface ISongRecord {
+    songId: number;
+    artist: string;
+    title: string;
+    duration: number;
+    album?: string;
+    rating?: number;
+}
+
+const songInfo = (song: ISongRecord): string => {
+    let result = '';
+    if (song.songId) {
+        result += `\x0312${song.songId}: `;
+    }
+    result += `\x0303${song.artist} - ${song.title} \x0310(${msToTime(song.duration)})`;
+    if (song.album) {
+        result += `\x0307 (${song.album})`;
+    }
+    if (song.rating) {
+        result += `\x0306 Rating: ${song.rating}`;
+    }
+    return result;
+};
+
+// Periodically check for dedications
+let currentSongId;
+setInterval(() => {
+    const connection = mysql.createConnection(mysqlConfig);
+    connection.connect();
+
+    const sql = `Select artist, title, duration, hl.songId, album, v.rating, rl.msg as dedication, rl.name as dedicatedBy
+        From historylist hl
+            Left Join requestlist rl On hl.requestID = rl.id
+            Left Join (
+                select avg(score) as rating, songId From votez Group By songId
+            ) as v On hl.songId = v.songId
+        Order by date_played desc Limit 0,1`;
+    connection.query(sql, (error, results, fields) => {
+        if (error) {
+            handleMysqlError(error);
+        } else if (results.length) {
+            // new song detection
+            if (results[0].songId !== currentSongId) {
+                currentSongId = results[0].songId;
+
+                // do we have a dedication to announce?
+                if (results[0].dedication && results[0].dedicatedBy) {
+                    ircConfig.channels.forEach(channel => {
+                        let msg = `\x0304Current playing: ${songInfo(results[0])} \x0304-=- `;
+                        msg += `\x0310Dedicated by: ${results[0].dedicatedBy} \x0F- \x0307${results[0].dedication}`;
+                        jerkBot.say(channel, msg);
+                    });
+                }
+            }
+        }
+    });
+
+    connection.end();
+}, 30000);

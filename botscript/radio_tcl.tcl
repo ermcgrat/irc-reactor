@@ -9,9 +9,9 @@ array set userit {};
 
 # Edit the following lines for MySQL connection.
 set serveri 192.168.1.25;
-set useri irc-reactor;
-set passwordi DbTcDoQHALqyQ3Cm;
-set databasei radio;
+set useri hidden;
+set passwordi hidden;
+set databasei hidden;
 # don't change this, unless your mySQL server doesn't use default port setting
 set mysql_port "default"
 
@@ -32,7 +32,7 @@ set request_url "http://radio.irc-reactor.com/req-irc.php";
 set request_days 30;
 
 # if you want the script to announce listener peaks, set this to 1
-set announce_listener_peak 1; 
+set announce_listener_peak 1;
 
 # set your radio relays here
 set relays "http://radio.irc-reactor.com:8018/listen.pls";
@@ -93,7 +93,7 @@ bind pub - $vote_alt_trigger vote;
 # bind msg <flags> <command> <proc>
 # procname <nick> <user@host> <handle> <text>
 # Description: used for /msg commands. The first word of the user's msg is the command, and everything else becomes the text argument.
-# Also note, putserv "PRIVMSG $dest" works if $dest is a channel or a user nick. 
+# Also note, putserv "PRIVMSG $dest" works if $dest is a channel or a user nick.
 bind msg - $help_trigger help_msg;
 bind msg - $listen_trigger listen_msg;
 bind msg - $listeners_trigger listeners_msg;
@@ -129,13 +129,13 @@ bind time - "* * * * *" songi
 
 # Some explanation regarding all of the color codes seen used below
 # a color code is started with \003 and it should then ALWAYS be followed by a 2-digit color code. However, they frequently just use the shorthand of a 1-digit color code. E.g. for light red: \00304Hello!\003
-# This could cause an issue if the text to be displayed then started with a number, as that first digit would be interpreted as part of the color code. 
-# Color code according to mIRC: 0 - White, 1 - Black, 2 - Blue, 3 - Green, 4 - Light Red, 5 - Brown, 6 - Purple, 7 - Orange, 8 - Yellow, 9 - Light Green, 10 - Cyan, 11 - Light Cyan, 12 - Light Blue, 13 - Pink, 14 - Grey, 15 - Light Grey 
+# This could cause an issue if the text to be displayed then started with a number, as that first digit would be interpreted as part of the color code.
+# Color code according to mIRC: 0 - White, 1 - Black, 2 - Blue, 3 - Green, 4 - Light Red, 5 - Brown, 6 - Purple, 7 - Orange, 8 - Yellow, 9 - Light Green, 10 - Cyan, 11 - Light Cyan, 12 - Light Blue, 13 - Pink, 14 - Grey, 15 - Light Grey
 # It seems like you can just keep specifying 2-digit color codes all the way up to 99, and each client treats them differently.
 # It's also important to note colors will persist until cleared. \003 will clear color formatting (foreground and background both).
-# Foreground and background: \003FF,BB  E.g yellow text on red background: \00308,04Hello 
-# An example of not cancelling color formatting: \00300,01Hello \00301to you   
-# The word "Hello" is "White on black", and "to you" is "black on black", as it inherits the black background from the first code. 
+# Foreground and background: \003FF,BB  E.g yellow text on red background: \00308,04Hello
+# An example of not cancelling color formatting: \00300,01Hello \00301to you
+# The word "Hello" is "White on black", and "to you" is "black on black", as it inherits the black background from the first code.
 
 proc triggers { nick user handle channel texti } {
 	set continue 0;
@@ -160,11 +160,11 @@ proc searchnew { nick user handle channel texti } {
   	if {$::mysql_port == "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi]}
   	if {$::mysql_port != "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi -port $::mysql_port]}
   	mysqluse $h $::databasei;
-  
+
   	mysqlsel $h "SELECT artist, title, duration, ID, album FROM `songlist` where count_played = 0 Order By ID desc limit 0,10";
-  	
+
   	mysqlmap $h {artist title duration id album} {
-  	
+
   		set duration [expr $duration / 1000];
   		set min [expr floor($duration / 60.0)];
   		set sec [expr $duration - ($min * 60)];
@@ -190,14 +190,14 @@ proc vote { nick user handle channel text } {
   	if {$::mysql_port == "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi]}
   	if {$::mysql_port != "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi -port $::mysql_port]}
   	mysqluse $h $::databasei;
-  	set currentsong [mysqlsel $h "SELECT songlist.ID FROM historylist,songlist WHERE (historylist.songID = songlist.ID) AND (songlist.songtype='S') ORDER BY historylist.date_played DESC LIMIT 0, 1" -flatlist];	
+  	set currentsong [mysqlsel $h "SELECT songlist.ID FROM historylist,songlist WHERE (historylist.songID = songlist.ID) AND (songlist.songtype='S') ORDER BY historylist.date_played DESC LIMIT 0, 1" -flatlist];
   	set songid [lindex $currentsong 0];
-  	
-  	if { $songid > 0 } { 
+
+  	if { $songid > 0 } {
   	 if { [string is integer $text] && $text > 0 && $text < 6 } {
-       # we have a good vote and a song is playing, lets vote it!    
-      	set votez [mysqlsel $h "Select ID, score From votez Where songID = $songid And host = '$user'" -flatlist];  	      	
-     		set voteid [lindex $votez 0];     		  	
+       # we have a good vote and a song is playing, lets vote it!
+      	set votez [mysqlsel $h "Select ID, score From votez Where songID = $songid And host = '$user'" -flatlist];
+     		set voteid [lindex $votez 0];
 		set myscore [lindex $votez 1];
 
       	if { [string is integer $voteid] && $voteid > 0 } {
@@ -210,7 +210,7 @@ proc vote { nick user handle channel text } {
         }
      } else {
       putserv "PRIVMSG $channel :\0034$nick:\0034\0034 Please vote with a value of 1 - 5 \0034";
-     }          
+     }
   	} else {
       putserv "PRIVMSG $channel :\0034$nick:\0034\0034 No song is currently playing! \0034";
     }
@@ -230,29 +230,29 @@ proc listen { nick user handle channel texti } {
 }
 
 proc songi { min hour day month year } {
-	
+
 	global current_song_id;
 
   if {$::mysql_port == "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi]}
 	if {$::mysql_port != "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi -port $::mysql_port]}
 	mysqluse $h $::databasei;
-	
+
 	# get the song being played right now
 	set newsong [mysqlsel $h "SELECT ID FROM `historylist` Order by date_played Desc limit 0,1;" -flatlist];
 	set continue 0;
-	
-	# is this song new to us?	
+
+	# is this song new to us?
 	if { [lindex $newsong 0] > $current_song_id } {
 	   set current_song_id [lindex $newsong 0];  # yes, update ourselves
-	   set continue 1;   
+	   set continue 1;
 	}
 
 	if {$continue == 1} {
-				
+
 		set biisi [mysqlsel $h "SELECT songlist.artist, songlist.title, songlist.duration, songlist.ID, historylist.requestID, historylist.date_played, songlist.album, historylist.listeners FROM historylist,songlist WHERE (historylist.songID = songlist.ID) AND (songlist.songtype='S') ORDER BY historylist.date_played DESC LIMIT 0, 1" -flatlist];
 
 		set dedication [mysqlsel $h "SELECT name, msg FROM requestlist WHERE (ID = '[lindex $biisi 4]') LIMIT 0, 1" -flatlist];
-    
+
 		set songid [lindex $biisi 3];
 		set duration [expr [lindex $biisi 2] / 1000];
 		set min [expr floor($duration / 60.0)];
@@ -280,21 +280,21 @@ proc songi { min hour day month year } {
 					# dedicated by
           set alku "$alku\0034 -=-\0034\00310 Dedicated by:\00310\0033 [lindex $dedication 0]\0033";
 				}
-				
+
 				#  dedication text
 				if {[lindex $dedication 1] != ""} {set alku "$alku\00314 -\00314\0037 [lindex $dedication 1]\0037";}
-				
+
 				# do we have a rating for this song?
     		set avg_score [mysqlsel $h "select avg(score) as gg From votez where songid = $songid group by songid" -flatlist];
     		set avgscore [lindex $avg_score 0];
-    		
+
     		if { [string length $avgscore] > 0 } {
     		  set avg_text "\00312Rating: $avgscore\00312";
     		} else {
           set avg_text "";
-        }			
-        set alku "$alku $avg_text";		
-				
+        }
+        set alku "$alku $avg_text";
+
 				for {set x 0} {$x < [llength $::dachan]} {incr x} {
 					putserv "PRIVMSG [lindex $::dachan $x] :$alku";
 				}
@@ -332,7 +332,7 @@ proc help { nick user handle channel texti } {
 	}
 	if { $nick == $channel } { set continue 1; }
 	if { $continue == 1 } {
-  	
+
   	putserv "NOTICE $nick :\0033$botnick command list:\0033";
   	putserv "NOTICE $nick :\00312$::listeners_trigger\00312 \00314-\00314\0033 How many people are listening to the radio";
   	putserv "NOTICE $nick :\00312$::playing_trigger\00312 \00314-\00314\0033 Displays the current song playing on the radio";
@@ -361,15 +361,15 @@ proc req { nick user handle channel text } {
     }
     if { $nick == $channel } { set continue 1; set chanz $channel; }
     if { $continue == 1 } {
-    
+
       if { $text == "" } {
         putserv "NOTICE $nick :\00312Give a Song ID\00312";
       }
       if { $text != "" } {
         set nickz $nick;
         set textz $text;
-		set reqUrl "$::request_url?songid=$text&host=$user"		
-		
+		set reqUrl "$::request_url?songid=$text&host=$user"
+
 		# get token from get request
 		set token [http::geturl $reqUrl]
 		# get response data from token
@@ -416,14 +416,14 @@ proc connect_callback {html} {
 		set kappale "\0033 [lindex $biisi 0] - [lindex $biisi 1]\0033\00310 ($time)\00310 \0037([lindex $biisi 3])\0037";
 
 		if {[info exists failure] == 0} {
-			if {[info exists success] == 0} { 
+			if {[info exists success] == 0} {
 				putserv "PRIVMSG $::chanz :\0034$::nickz:\0034 \0034Your request failed, because:\0034\00312 Could not reach request server.\00312\0034 -=-\0034$kappale";
 			}
 		}
-		if {[info exists success] != 0} { 
+		if {[info exists success] != 0} {
 			putserv "PRIVMSG $::chanz :\0034$::nickz:\0034 \0034Your request was successfully sent to the DJ program\0034\0034 -=-\0034$kappale";
 		}
-	    if {[info exists failure] != 0} { 
+	    if {[info exists failure] != 0} {
 			putserv "PRIVMSG $::chanz :\0034$::nickz:\0034 \0034Your request failed, because:\0034\00312 $failure\00312\0034 -=-\0034$kappale";
 		}
 	}
@@ -439,19 +439,19 @@ proc search { nick user handle channel text } {
 	if { $nick == $channel } { set continue 1; }
 	if { $continue == 1 } {
   	if {$text == ""} {putserv "NOTICE $nick :\00312Please give search string, for example:\00312\0033 $search_trigger symphony";}
-  
+
   	if {$text != ""} {
-  
+
     	regsub -all "\'" $text "\\'" text
-    
+
     	if {$::mysql_port == "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi]}
     	if {$::mysql_port != "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi -port $::mysql_port]}
     	mysqluse $h $::databasei;
-    
+
     	mysqlsel $h "SELECT artist, title, duration, ID, album FROM songlist WHERE (title like '%$text%') OR (artist like '%$text%') OR (album like '%$text%') OR (ID = '$text') ORDER BY rating DESC LIMIT 0, 10";
     	set i 0;
     	mysqlmap $h {artist title duration id album} {
-    	
+
     		set duration [expr $duration / 1000];
     		set min [expr floor($duration / 60.0)];
     		set sec [expr $duration - ($min * 60)];
@@ -464,7 +464,7 @@ proc search { nick user handle channel text } {
     		incr i;
     		putserv "NOTICE $nick :->\00312 $id\00312 -\0033 $artist - $title \0033\00310($time)\00310 \0037($album)\0037";
     	}
-    
+
     	if { $i == 0 } { putserv "NOTICE $nick :\00312Couldn't find any songs\00312";
     	}
     	mysqlclose $h;
@@ -484,7 +484,7 @@ proc playing { nick user handle channel text } {
   	if {$::mysql_port != "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi -port $::mysql_port]}
   	mysqluse $h $::databasei;
 
-    set songinfo [mysqlsel $h "SELECT songlist.artist, songlist.title, songlist.duration, songlist.ID, songlist.album FROM historylist,songlist WHERE (historylist.songID = songlist.ID) AND (songlist.songtype='S') ORDER BY historylist.date_played DESC LIMIT 0, 1" -flatlist];	
+    set songinfo [mysqlsel $h "SELECT songlist.artist, songlist.title, songlist.duration, songlist.ID, songlist.album FROM historylist,songlist WHERE (historylist.songID = songlist.ID) AND (songlist.songtype='S') ORDER BY historylist.date_played DESC LIMIT 0, 1" -flatlist];
 		set songid [lindex $songinfo 3];
 		set duration [expr [lindex $songinfo 2] / 1000];
 		set min [expr floor($duration / 60.0)];
@@ -496,16 +496,16 @@ proc playing { nick user handle channel text } {
 		}
 		set time "$min:$sec";
 		set alku "\0034Currently playing:\0034\0033 [lindex $songinfo 0] - [lindex $songinfo 1] \0033\00310($time)\00310 \0037([lindex $songinfo 4])\0037";
-		
+
 		set avg_score [mysqlsel $h "select avg(score) as gg From votez where songid = $songid group by songid" -flatlist];
 		set avgscore [lindex $avg_score 0];
-		
+
 		if { [string length $avgscore] > 0 } {
 		  set avg_text "\00312Rating: $avgscore\00312";
 		} else {
       set avg_text "";
     }
-		
+
   	putserv "PRIVMSG $channel :$alku $avg_text";
   	mysqlclose $h;
 	}
@@ -524,7 +524,7 @@ proc next { nick user handle channel text } {
   	mysqlsel $h "SELECT songlist.ID, songlist.artist, songlist.title, songlist.duration, songlist.album FROM queuelist, songlist WHERE (queuelist.songID = songlist.ID)  AND (songlist.songtype='S') AND (songlist.artist <> '') ORDER BY queuelist.sortID ASC LIMIT 0, 2";
   	set i 0;
   	mysqlmap $h {songid artist title duration album} {
-  
+
   		set duration [expr $duration / 1000];
   		set min [expr floor($duration / 60.0)];
   		set sec [expr $duration - ($min * 60)];
@@ -558,10 +558,10 @@ proc prev { nick user handle channel text } {
   	if {$::mysql_port != "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi -port $::mysql_port]}
   	mysqluse $h $::databasei;
   	mysqlsel $h "SELECT songlist.ID, songlist.artist, songlist.title, songlist.duration, songlist.album FROM historylist,songlist WHERE (historylist.songID = songlist.ID) AND (songlist.songtype='S') ORDER BY historylist.date_played DESC LIMIT 1, 2"
-  
+
   	set i 0;
   	mysqlmap $h {songid artist title duration album} {
-  
+
   		set duration [expr $duration / 1000];
   		set min [expr floor($duration / 60.0)];
   		set sec [expr $duration - ($min * 60)];
@@ -608,11 +608,11 @@ proc top5 { nick user handle channel text } {
   	if {$::mysql_port == "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi]}
   	if {$::mysql_port != "default"} {set h [mysqlconnect -h  $::serveri -u $::useri -password $::passwordi -port $::mysql_port]}
   	mysqluse $h $::databasei;
-  
+
   	mysqlsel $h "SELECT songlist.artist, songlist.title, songlist.duration, songlist.ID, songlist.album, count(songlist.ID) as cnt FROM requestlist, songlist WHERE (requestlist.songID = songlist.ID) AND (requestlist.code=200) AND (requestlist.t_stamp BETWEEN NOW() - INTERVAL $::request_days DAY AND NOW()) GROUP BY songlist.ID, songlist.artist, songlist.title ORDER BY cnt DESC Limit 0,5";
-  	
+
   	mysqlmap $h {artist title duration id album cnt} {
-  	
+
   		set duration [expr $duration / 1000];
   		set min [expr floor($duration / 60.0)];
   		set sec [expr $duration - ($min * 60)];

@@ -4,9 +4,9 @@
 // In php7, 'localhost' doesn't seem to work, while 127.0.0.1 does. Weird
 $db_host = "127.0.0.1";
 $db_port = "3306";
-$db_dbname = "radio";
-$db_username = "radio";
-$db_password = "getrekt99";
+$db_dbname = "";
+$db_username = "";
+$db_password = "";
 
 //Station general details
 $station  = "iRC-Reactor Tunez";
@@ -19,15 +19,15 @@ $sam["port"] = "3308";      //The port SAM handles HTTP requests on. Usually 122
 
 // General options
 $privaterequests = true;  //If False, AudioRealm.com will handle the requests
-$showtoprequests = true;  //Must we show the top 10 requests on the now playing page? 
+$showtoprequests = true;  //Must we show the top 10 requests on the now playing page?
 $requestdays     = 30;    //Show the top10 requests for the last xx days
 
-$showpic     = true; //Must we show pictures in now playing section?   
+$showpic     = true; //Must we show pictures in now playing section?
 $picture_dir = "pictures/"; //Directory where all your album pictures are stored
 $picture_na  = $picture_dir."na.jpeg"; //Use this picture if the song has no picture
 
 // Row colors used
 $darkrow  = "#dadada";
-$lightrow = "#F6F6F6";  
- 
+$lightrow = "#F6F6F6";
+
 ?>
