@@ -17,7 +17,7 @@ const ircConfig = {
 };
 
 const mysqlConfig: mysql.ConnectionConfig = {
-    host: 'east.irc-reactor.com',
+    host: '',
     user: '',
     password: '',
     database: 'radio'
@@ -551,6 +551,26 @@ jerk(j => {
             left join (select avg(score) as rating, songId From votez Group By songId) as v On songlist.ID = v.songId
             WHERE (requestlist.songID = songlist.ID) AND (requestlist.code=200) ${filter}
             GROUP BY songlist.ID, songlist.artist, songlist.title ORDER BY cnt DESC Limit 0,5`;
+        connection.query(sql, (error, results, fields) => {
+            if (error) {
+                handleMysqlError(error, message);
+            } else if (results.length) {
+                message.msg(`\x0304Most requested songs${requestDays ? ` in the last ${requestDays} days` : ''}:`);
+                for (let i = 0; i < results.length; i++) {
+                    message.msg(`\x0304Requested ${results[i].cnt} time(s): ` + songInfo(results[i]));
+                }
+            }
+        });
+
+        connection.end();
+    });
+
+    j.watch_for(/^!votej [1-5]$/, message => {
+        const rating = message.match_data[1];
+        const connection = mysql.createConnection(mysqlConfig);
+        connection.connect();
+
+        const sql = `Select sl.id as songId`;
         connection.query(sql, (error, results, fields) => {
             if (error) {
                 handleMysqlError(error, message);

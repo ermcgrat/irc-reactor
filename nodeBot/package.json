@@ -4,7 +4,6 @@
   "description": "A simple nodejs-based IRC bot",
   "main": "jerk.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "jerk": "ts-node jerk.ts"
   },
   "author": "",
